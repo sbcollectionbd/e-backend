@@ -12,7 +12,16 @@ const app = express();
 connectDB();
 
 // Middlewares
-app.use(cors({ origin: "http://localhost:3000" }));
+const cors = require("cors");
+
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "https://www.sbcollectionbd.com",
+    "https://e-frontend-lemon.vercel.app"
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 // Routes
