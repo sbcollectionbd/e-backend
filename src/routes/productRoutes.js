@@ -6,22 +6,13 @@ const {
   getSingleProduct,
   addProduct,
   updateProduct,
-  deleteProduct
+  deleteProduct,
 } = require("../controllers/productController");
 
-// GET all
 router.get("/", getProducts);
-
-// GET single
 router.get("/:id", getSingleProduct);
-
-// POST
 router.post("/", addProduct);
-
-// UPDATE
 router.patch("/:id", updateProduct);
-
-// DELETE
 router.delete("/:id", deleteProduct);
 
 module.exports = router;

@@ -13,4 +13,11 @@ const productSchema = new mongoose.Schema({
   stock: { type: Number, default: 1 },
 });
 
+// ✅ Indexes for fast filtering & search
+productSchema.index({ category: 1 });
+productSchema.index({ subcategory: 1 });
+productSchema.index({ isFeatured: 1 });
+productSchema.index({ name: "text" }); // full-text search index
+productSchema.index({ category: 1, subcategory: 1 }); // compound for combined filters
+
 module.exports = mongoose.model("Product", productSchema);
