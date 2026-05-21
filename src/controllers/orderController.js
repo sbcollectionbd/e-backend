@@ -4,21 +4,15 @@ const { getCache, setCache, invalidateCache } = require("../utils/cache");
 // SMS service will be added later
 
 const CACHE_TTL = {
-  ORDER_LIST: 10,    // 10 seconds (orders change frequently)
-  TRACK_ORDER: 30,   // 30 seconds for tracking
+  ORDER_LIST: 10, // 10 seconds (orders change frequently)
+  TRACK_ORDER: 30, // 30 seconds for tracking
 };
 
 // ✅ Create order — with full validation & cache invalidation
 exports.createOrder = async (req, res) => {
   try {
-    const {
-      customerName,
-      phone,
-      address,
-      items,
-      totalPrice,
-      deliveryCharge,
-    } = req.body;
+    const { customerName, phone, address, items, totalPrice, deliveryCharge, size } =
+      req.body;
 
     // Input validation
     if (!customerName || !phone || !address || !items || !totalPrice) {
@@ -26,11 +20,15 @@ exports.createOrder = async (req, res) => {
     }
 
     if (!/^01[3-9]\d{8}$/.test(phone)) {
-      return res.status(400).json({ message: "Invalid Bangladeshi phone number" });
+      return res
+        .status(400)
+        .json({ message: "Invalid Bangladeshi phone number" });
     }
 
     if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ message: "Order must have at least one item" });
+      return res
+        .status(400)
+        .json({ message: "Order must have at least one item" });
     }
 
     const order = await Order.create({
@@ -40,6 +38,7 @@ exports.createOrder = async (req, res) => {
       items,
       totalPrice,
       deliveryCharge: deliveryCharge || 0,
+      size: size || null,
     });
 
     // ✅ Invalidate order list & this phone's tracking cache
@@ -65,7 +64,7 @@ exports.updateStatus = async (req, res) => {
     const order = await Order.findByIdAndUpdate(
       req.params.id,
       { status },
-      { new: true }
+      { new: true },
     );
 
     if (!order) return res.status(404).json({ message: "Order not found" });
@@ -94,9 +93,7 @@ exports.trackOrder = async (req, res) => {
     const cached = getCache(cacheKey);
     if (cached) return res.json(cached);
 
-    const orders = await Order.find({ phone })
-      .sort({ createdAt: -1 })
-      .lean(); // ✅ faster plain objects
+    const orders = await Order.find({ phone }).sort({ createdAt: -1 }).lean(); // ✅ faster plain objects
 
     setCache(cacheKey, orders, CACHE_TTL.TRACK_ORDER);
     res.json(orders);
@@ -111,7 +108,10 @@ exports.getOrders = async (req, res) => {
     const { page = 1, limit = 50, status } = req.query;
     const cacheKey = `orders:${JSON.stringify(req.query)}`;
     const cached = getCache(cacheKey);
-    if (cached) return res.json(cached);
+    if (!noCache) {
+      const cached = getCache(cacheKey);
+      if (cached) return res.json(cached);
+    }
 
     const query = status ? { status } : {};
     const skip = (parseInt(page) - 1) * parseInt(limit);
