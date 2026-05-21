@@ -4,8 +4,8 @@ const { getCache, setCache, invalidateCache } = require("../utils/cache");
 // SMS service will be added later
 
 const CACHE_TTL = {
-  ORDER_LIST: 30,    // 30 seconds (orders change frequently)
-  TRACK_ORDER: 60,   // 1 minute for tracking
+  ORDER_LIST: 10,    // 10 seconds (orders change frequently)
+  TRACK_ORDER: 30,   // 30 seconds for tracking
 };
 
 // ✅ Create order — with full validation & cache invalidation

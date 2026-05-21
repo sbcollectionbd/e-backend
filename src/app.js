@@ -35,15 +35,11 @@ const generalLimiter = rateLimit({
   message: { message: "Too many requests, please try again later." },
 });
 
-// ✅ Stricter limiter for order creation (prevent spam orders)
-const orderLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10, // max 10 orders per 15 min per IP
-  message: { message: "Too many orders submitted, please wait." },
-});
+
+
 
 app.use("/api/", generalLimiter);
-app.use("/api/orders", orderLimiter);
+
 
 // ✅ Health check
 app.get("/", (req, res) => {
