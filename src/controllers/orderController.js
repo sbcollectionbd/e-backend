@@ -103,11 +103,43 @@ exports.trackOrder = async (req, res) => {
 };
 
 // ✅ Get all orders (admin) — with caching & pagination
+// exports.getOrders = async (req, res) => {
+//   try {
+//     const { page = 1, limit = 50, status } = req.query;
+//     const cacheKey = `orders:${JSON.stringify(req.query)}`;
+//     const cached = getCache(cacheKey);
+//     if (!noCache) {
+//       const cached = getCache(cacheKey);
+//       if (cached) return res.json(cached);
+//     }
+
+//     const query = status ? { status } : {};
+//     const skip = (parseInt(page) - 1) * parseInt(limit);
+
+//     const [data, total] = await Promise.all([
+//       Order.find(query)
+//         .sort({ createdAt: -1 })
+//         .skip(skip)
+//         .limit(parseInt(limit))
+//         .lean(),
+//       Order.countDocuments(query),
+//     ]);
+
+//     const result = { total, page: parseInt(page), data };
+//     setCache(cacheKey, result, CACHE_TTL.ORDER_LIST);
+//     res.json(result);
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
 exports.getOrders = async (req, res) => {
   try {
     const { page = 1, limit = 50, status } = req.query;
+    const noCache = req.query.noCache === "true"; // ✅ fix this line
+
     const cacheKey = `orders:${JSON.stringify(req.query)}`;
-    const cached = getCache(cacheKey);
+
     if (!noCache) {
       const cached = getCache(cacheKey);
       if (cached) return res.json(cached);
