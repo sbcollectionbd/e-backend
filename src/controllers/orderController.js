@@ -1,20 +1,26 @@
 // src/controllers/orderController.js
 const Order = require("../models/Order");
 const { getCache, setCache, invalidateCache } = require("../utils/cache");
-// SMS service will be added later
+const { sendSMS, SMS_MESSAGES } = require("../services/smsService");
 
 const CACHE_TTL = {
-  ORDER_LIST: 10, // 10 seconds (orders change frequently)
-  TRACK_ORDER: 30, // 30 seconds for tracking
+  ORDER_LIST: 10,
+  TRACK_ORDER: 30,
 };
 
-// ✅ Create order — with full validation & cache invalidation
+// ✅ Create order
 exports.createOrder = async (req, res) => {
   try {
-    const { customerName, phone, address, items, totalPrice, deliveryCharge, size } =
-      req.body;
+    const {
+      customerName,
+      phone,
+      address,
+      items,
+      totalPrice,
+      deliveryCharge,
+      size,
+    } = req.body;
 
-    // Input validation
     if (!customerName || !phone || !address || !items || !totalPrice) {
       return res.status(400).json({ message: "Missing required fields" });
     }
@@ -41,7 +47,6 @@ exports.createOrder = async (req, res) => {
       size: size || null,
     });
 
-    // ✅ Invalidate order list & this phone's tracking cache
     invalidateCache("orders:");
     invalidateCache(`track:${phone}`);
 
@@ -51,7 +56,7 @@ exports.createOrder = async (req, res) => {
   }
 };
 
-// ✅ Update order status + send SMS — with error handling
+// ✅ Update order status + send SMS on Confirmed
 exports.updateStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -69,18 +74,26 @@ exports.updateStatus = async (req, res) => {
 
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    // ✅ Invalidate caches
     invalidateCache("orders:");
     invalidateCache(`track:${order.phone}`);
 
-    // TODO: SMS notifications will be added here later
+    // ✅ Send SMS only when Confirmed
+    if (SMS_MESSAGES[status]) {
+      const message = SMS_MESSAGES[status](
+        order.customerName,
+        order.totalPrice, // ✅ total
+        order.phone, // ✅ phone for track link
+      );
+      sendSMS(order.phone, message);
+    }
+
     res.json(order);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-// ✅ Track order by phone — with caching
+// ✅ Track order by phone
 exports.trackOrder = async (req, res) => {
   try {
     const { phone } = req.params;
@@ -93,7 +106,7 @@ exports.trackOrder = async (req, res) => {
     const cached = getCache(cacheKey);
     if (cached) return res.json(cached);
 
-    const orders = await Order.find({ phone }).sort({ createdAt: -1 }).lean(); // ✅ faster plain objects
+    const orders = await Order.find({ phone }).sort({ createdAt: -1 }).lean();
 
     setCache(cacheKey, orders, CACHE_TTL.TRACK_ORDER);
     res.json(orders);
@@ -102,41 +115,11 @@ exports.trackOrder = async (req, res) => {
   }
 };
 
-// ✅ Get all orders (admin) — with caching & pagination
-// exports.getOrders = async (req, res) => {
-//   try {
-//     const { page = 1, limit = 50, status } = req.query;
-//     const cacheKey = `orders:${JSON.stringify(req.query)}`;
-//     const cached = getCache(cacheKey);
-//     if (!noCache) {
-//       const cached = getCache(cacheKey);
-//       if (cached) return res.json(cached);
-//     }
-
-//     const query = status ? { status } : {};
-//     const skip = (parseInt(page) - 1) * parseInt(limit);
-
-//     const [data, total] = await Promise.all([
-//       Order.find(query)
-//         .sort({ createdAt: -1 })
-//         .skip(skip)
-//         .limit(parseInt(limit))
-//         .lean(),
-//       Order.countDocuments(query),
-//     ]);
-
-//     const result = { total, page: parseInt(page), data };
-//     setCache(cacheKey, result, CACHE_TTL.ORDER_LIST);
-//     res.json(result);
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// };
-
+// ✅ Get all orders (admin)
 exports.getOrders = async (req, res) => {
   try {
     const { page = 1, limit = 50, status } = req.query;
-    const noCache = req.query.noCache === "true"; // ✅ fix this line
+    const noCache = req.query.noCache === "true";
 
     const cacheKey = `orders:${JSON.stringify(req.query)}`;
 
